@@ -25,7 +25,7 @@ pwm_b = GPIO.PWM(ENB, PWM_FREQUENCY)
 pwm_a.start(0)  # Start with motors stopped
 pwm_b.start(0)
 
-def run_forward(speed=60):
+def run_forward(speed=100):
     """
     Function to run both motors forward at a specified speed.
     :param speed: PWM duty cycle (0 to 100)
@@ -52,8 +52,8 @@ def stop_motors():
 
 try:
     print("Starting motor test...")
-    run_forward(speed=100)    # Run motors forward at 60% speed
-    time.sleep(5)            # Run for 5 seconds
+    run_forward(speed=100)    # Run motors forward at 100% speed
+    time.sleep(10)            # Run for 10 seconds
     stop_motors()            # Stop motors after 5 seconds
 except KeyboardInterrupt:
     # If the script is interrupted, ensure motors are stopped
