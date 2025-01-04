@@ -52,7 +52,7 @@ def stop_motors():
 
 try:
     print("Starting motor test...")
-    run_forward(speed=60)    # Run motors forward at 60% speed
+    run_forward(speed=100)    # Run motors forward at 60% speed
     time.sleep(5)            # Run for 5 seconds
     stop_motors()            # Stop motors after 5 seconds
 except KeyboardInterrupt:
