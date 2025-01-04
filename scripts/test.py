@@ -22,8 +22,8 @@ GPIO.setup(IN4, GPIO.OUT)
 PWM_FREQUENCY = 100  # 100Hz is generally suitable for DC motors
 pwm_a = GPIO.PWM(ENA, PWM_FREQUENCY)
 pwm_b = GPIO.PWM(ENB, PWM_FREQUENCY)
-pwm_a.start(0)  # Start with motors stopped
-pwm_b.start(0)
+pwm_a.start(1)  # Start with motors stopped
+pwm_b.start(1)
 
 def run_forward(speed=100):
     """
