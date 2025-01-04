@@ -22,10 +22,10 @@ GPIO.setup(IN3, GPIO.OUT)
 GPIO.setup(IN4, GPIO.OUT)
 
 # Setup PWM
-pwm_a = GPIO.PWM(ENA, 1000)  # 100Hz
-pwm_b = GPIO.PWM(ENB, 1000)
-pwm_a.start(100)
-pwm_b.start(100)
+pwm_a = GPIO.PWM(ENA, 100)  # 100Hz
+pwm_b = GPIO.PWM(ENB, 100)
+pwm_a.start(0)
+pwm_b.start(0)
 
 def set_motor_forward():
     GPIO.output(IN1, GPIO.HIGH)
