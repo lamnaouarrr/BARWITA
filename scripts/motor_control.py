@@ -24,26 +24,35 @@ GPIO.setup(IN4, GPIO.OUT)
 # Setup PWM
 pwm_a = GPIO.PWM(ENA, 100)  # 100Hz
 pwm_b = GPIO.PWM(ENB, 100)
-pwm_a.start(0) # Start with 0% duty cycle (motors stopped)
+pwm_a.start(0)  # Start with 0% duty cycle (motors stopped)
 pwm_b.start(0)
 
-def set_motor_forward():
+def set_motor_forward(speed=50):
     GPIO.output(IN1, GPIO.HIGH)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.HIGH)
     GPIO.output(IN4, GPIO.LOW)
+    pwm_a.ChangeDutyCycle(speed)
+    pwm_b.ChangeDutyCycle(speed)
+    print(f"Set motors forward with speed {speed}%")
 
-def set_motor_backward():
+def set_motor_backward(speed=50):
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.HIGH)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.HIGH)
+    pwm_a.ChangeDutyCycle(speed)
+    pwm_b.ChangeDutyCycle(speed)
+    print(f"Set motors backward with speed {speed}%")
 
 def stop_motors():
     GPIO.output(IN1, GPIO.LOW)
     GPIO.output(IN2, GPIO.LOW)
     GPIO.output(IN3, GPIO.LOW)
     GPIO.output(IN4, GPIO.LOW)
+    pwm_a.ChangeDutyCycle(0)
+    pwm_b.ChangeDutyCycle(0)
+    print("Motors stopped")
 
 def getch():
     """Function to capture single keypress"""
@@ -63,25 +72,17 @@ try:
         key = getch()
         if key == 'w':
             print("Moving Forward")
-            set_motor_forward()
-            pwm_a.ChangeDutyCycle(50)  # Adjust speed as needed
-            pwm_b.ChangeDutyCycle(50)
+            set_motor_forward(50)  # Adjust speed as needed
         elif key == 's':
             print("Moving Backward")
-            set_motor_backward()
-            pwm_a.ChangeDutyCycle(50)
-            pwm_b.ChangeDutyCycle(50)
+            set_motor_backward(50)
         elif key == 'q':
             print("Stopping Motors and Exiting")
             stop_motors()
-            pwm_a.ChangeDutyCycle(0)
-            pwm_b.ChangeDutyCycle(0)
             break
         else:
             print("Invalid Key Pressed")
             stop_motors()
-            pwm_a.ChangeDutyCycle(0)
-            pwm_b.ChangeDutyCycle(0)
 except KeyboardInterrupt:
     print("\nInterrupted by User")
 finally:
