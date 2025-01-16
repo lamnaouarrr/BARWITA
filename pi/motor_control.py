@@ -22,8 +22,8 @@ GPIO.setup(IN3, GPIO.OUT)
 GPIO.setup(IN4, GPIO.OUT)
 
 # Setup PWM (for speed control)
-pwm_a = GPIO.PWM(ENA, 100)  # 1000Hz
-pwm_b = GPIO.PWM(ENB, 100)
+pwm_a = GPIO.PWM(ENA, 1000)  # 1000Hz
+pwm_b = GPIO.PWM(ENB, 1000)
 pwm_a.start(0)  # Start with 0% duty cycle (motors stopped)
 pwm_b.start(0)
 
@@ -58,7 +58,7 @@ def accelerate_forward(final_speed=100, step=10, delay=1):
         print(f"Current speed: {current_speed}%")
     print(f"Accelerated forward up to {final_speed}%")
 
-def accelerate_backward(final_speed=100, step=10, delay=0.05):
+def accelerate_backward(final_speed=100, step=10, delay=1):
     """
     Gradually ramp speed from 0% to final_speed% for backward motion.
     - step: increments of duty cycle

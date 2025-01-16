@@ -1,9 +1,16 @@
 import tkinter as tk
 import requests
+import time
 
 # Replace with your Pi’s IP and port.
 PI_IP = "192.168.10.100"
 PORT = 5000
+
+# Speed increments and delay
+SPEED_INCREMENT = 10  # Increment speed by 5% every time the key is pressed
+SPEED_DELAY = 1    # Delay in seconds between each speed update
+
+current_speed = 0  # Current speed (0 to 100)
 
 def send_command(endpoint, speed=None):
     """
@@ -20,38 +27,42 @@ def send_command(endpoint, speed=None):
     except requests.exceptions.RequestException as e:
         print(f"Error sending {endpoint}: {e}")
 
-def forward(speed=70):
+def forward():
     """Send forward command."""
-    send_command("forward", speed)
+    global current_speed
+    if current_speed < 100:
+        current_speed += SPEED_INCREMENT  # Increase speed gradually
+    send_command("forward", current_speed)
 
-def backward(speed=70):
+def backward():
     """Send backward command."""
-    send_command("backward", speed)
+    global current_speed
+    if current_speed < 100:
+        current_speed += SPEED_INCREMENT  # Increase speed gradually
+    send_command("backward", current_speed)
 
 def stop():
     """Stop motors."""
+    global current_speed
+    current_speed = 0
     send_command("stop")
 
-# Key event handlers
+def key_press_repeat(event):
+    """Handle repeated key presses for gradual speed increase."""
+    key = event.keysym.lower()
+    if key == 'w':
+        forward()
+    elif key == 's':
+        backward()
 
 def on_key_press(event):
-    """
-    Called when any key is pressed. We check if it's 'w' or 's'
-    and issue the corresponding motor command.
-    """
-    key = event.keysym.lower()  # e.g. 'W' -> 'w'
-    if key == 'w':
-        forward(70)  # adjust speed if needed
-    elif key == 's':
-        backward(70)
+    """Start the speed increase when key is pressed."""
+    key_press_repeat(event)
+    root.after(int(SPEED_DELAY * 1000), key_press_repeat, event)
 
 def on_key_release(event):
-    """
-    Called when any key is released. If it's 'w' or 's', we stop motors.
-    """
-    key = event.keysym.lower()
-    if key in ['w', 's']:
-        stop()
+    """Stop the motors when the key is released."""
+    stop()
 
 # Build the GUI
 root = tk.Tk()
