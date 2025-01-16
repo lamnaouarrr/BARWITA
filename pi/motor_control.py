@@ -37,7 +37,7 @@ def stop_motors():
     pwm_b.ChangeDutyCycle(0)
     print("Motors stopped")
 
-def accelerate_forward(final_speed=100, step=5, delay=0.05):
+def accelerate_forward(final_speed=100, step=5, delay=1):
     """
     Gradually ramp speed from 0% to final_speed% for forward motion.
     - step: increments of duty cycle
