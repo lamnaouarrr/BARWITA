@@ -72,7 +72,7 @@ def decelerate_motor(final_speed=0, step=10, delay=0.05):
         pwm_a.ChangeDutyCycle(current_speed)
         pwm_b.ChangeDutyCycle(current_speed)
         time.sleep(delay)
-        current_speed -= step
+        current_speed -= step  # Decrease speed by `step` (e.g., 10%)
     stop_motors()  # Stop completely when it reaches 0%
     print(f"Decelerated to {final_speed}% and stopped.")
 
@@ -102,7 +102,7 @@ def backward():
 
 @app.route("/stop", methods=["POST"])
 def stop():
-    decelerate_motor(final_speed=0)
+    decelerate_motor(final_speed=0, step=10)  # Gradually decrease speed
     return jsonify({"status": "Motors stopped"})
 
 @app.route("/cleanup", methods=["POST"])
