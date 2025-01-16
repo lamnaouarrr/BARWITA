@@ -7,8 +7,8 @@ PI_IP = "192.168.10.100"
 PORT = 5000
 
 # Speed increments and delay
-SPEED_INCREMENT = 10  # Increment speed by 10% every time the key is pressed
-SPEED_DELAY = 0.01    # Delay in seconds between each speed update
+SPEED_INCREMENT = 5  # Increment speed by 5% every time the key is pressed
+SPEED_DELAY = 0.1    # Delay in seconds between each speed update
 
 current_speed = 0  # Current speed (0 to 100)
 
@@ -61,7 +61,7 @@ def on_key_press(event):
     root.after(int(SPEED_DELAY * 1000), key_press_repeat, event)
 
 def on_key_release(event):
-    """Stop the motors when the key is released."""
+    """Stop the motors and begin deceleration when the key is released."""
     stop()
 
 # Build the GUI
