@@ -7,8 +7,8 @@ PI_IP = "192.168.10.100"
 PORT = 5000
 
 # Speed increments and delay
-SPEED_INCREMENT = 10  # Increment speed by 5% every time the key is pressed
-SPEED_DELAY = 1    # Delay in seconds between each speed update
+SPEED_INCREMENT = 10  # Increment speed by 10% every time the key is pressed
+SPEED_DELAY = 0.01    # Delay in seconds between each speed update
 
 current_speed = 0  # Current speed (0 to 100)
 
