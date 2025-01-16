@@ -22,30 +22,10 @@ GPIO.setup(IN3, GPIO.OUT)
 GPIO.setup(IN4, GPIO.OUT)
 
 # Setup PWM (for speed control)
-pwm_a = GPIO.PWM(ENA, 100)  # 100Hz
-pwm_b = GPIO.PWM(ENB, 100)
+pwm_a = GPIO.PWM(ENA, 1000)  # 1000Hz
+pwm_b = GPIO.PWM(ENB, 1000)
 pwm_a.start(0)  # Start with 0% duty cycle (motors stopped)
 pwm_b.start(0)
-
-def set_motor_forward(speed=50):
-    """Set both motors forward at a given duty cycle speed."""
-    GPIO.output(IN1, GPIO.HIGH)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.HIGH)
-    GPIO.output(IN4, GPIO.LOW)
-    pwm_a.ChangeDutyCycle(speed)
-    pwm_b.ChangeDutyCycle(speed)
-    print(f"Set motors forward with speed {speed}%")
-
-def set_motor_backward(speed=50):
-    """Set both motors backward at a given duty cycle speed."""
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.HIGH)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.HIGH)
-    pwm_a.ChangeDutyCycle(speed)
-    pwm_b.ChangeDutyCycle(speed)
-    print(f"Set motors backward with speed {speed}%")
 
 def stop_motors():
     """Stop both motors entirely."""
@@ -57,27 +37,69 @@ def stop_motors():
     pwm_b.ChangeDutyCycle(0)
     print("Motors stopped")
 
-# -- Flask routes --
+def accelerate_forward(final_speed=100, step=5, delay=0.05):
+    """
+    Gradually ramp speed from 0% to final_speed% for forward motion.
+    - step: increments of duty cycle
+    - delay: pause between increments
+    """
+    # Set direction pins for forward
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    GPIO.output(IN3, GPIO.HIGH)
+    GPIO.output(IN4, GPIO.LOW)
+
+    current_speed = 0
+    while current_speed <= final_speed:
+        pwm_a.ChangeDutyCycle(current_speed)
+        pwm_b.ChangeDutyCycle(current_speed)
+        time.sleep(delay)
+        current_speed += step
+    print(f"Accelerated forward up to {final_speed}%")
+
+def accelerate_backward(final_speed=100, step=5, delay=0.05):
+    """
+    Gradually ramp speed from 0% to final_speed% for backward motion.
+    - step: increments of duty cycle
+    - delay: pause between increments
+    """
+    # Set direction pins for backward
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.HIGH)
+    GPIO.output(IN3, GPIO.LOW)
+    GPIO.output(IN4, GPIO.HIGH)
+
+    current_speed = 0
+    while current_speed <= final_speed:
+        pwm_a.ChangeDutyCycle(current_speed)
+        pwm_b.ChangeDutyCycle(current_speed)
+        time.sleep(delay)
+        current_speed += step
+    print(f"Accelerated backward up to {final_speed}%")
 
 @app.route("/")
 def index():
-    return jsonify({"message": "BARWITA Motor Control API is running!"})
+    return jsonify({"message": "BARWITA Motor Control API with Acceleration"})
 
 @app.route("/forward", methods=["POST"])
 def forward():
-    # Optionally parse a 'speed' from JSON payload or default to 50
+    # Parse a 'speed' from JSON or default to 100
     data = request.get_json(silent=True)
-    speed = data.get("speed", 50) if data else 50
+    speed = data.get("speed", 100) if data else 100
 
-    set_motor_forward(speed)
+    # Safely stop motors first if you prefer
+    stop_motors()
+    # Then accelerate forward
+    accelerate_forward(final_speed=speed)
     return jsonify({"status": "Moving forward", "speed": speed})
 
 @app.route("/backward", methods=["POST"])
 def backward():
     data = request.get_json(silent=True)
-    speed = data.get("speed", 50) if data else 50
+    speed = data.get("speed", 100) if data else 100
 
-    set_motor_backward(speed)
+    stop_motors()
+    accelerate_backward(final_speed=speed)
     return jsonify({"status": "Moving backward", "speed": speed})
 
 @app.route("/stop", methods=["POST"])
@@ -85,7 +107,6 @@ def stop():
     stop_motors()
     return jsonify({"status": "Motors stopped"})
 
-# Graceful shutdown or cleanup route (OPTIONAL)
 @app.route("/cleanup", methods=["POST"])
 def cleanup():
     """Optional route to clean up GPIO if you want to free resources."""
@@ -94,11 +115,10 @@ def cleanup():
     GPIO.cleanup()
     return jsonify({"status": "GPIO cleaned up, server still running. Re-init needed."})
 
-# Run the Flask server
 if __name__ == "__main__":
-    print("Motor Control via Flask HTTP endpoints.")
+    print("Motor Control with Acceleration via Flask HTTP endpoints.")
     try:
-        app.run(host='0.0.0.0', port=5000)  # Listen on all interfaces, port 5000
+        app.run(host='0.0.0.0', port=5000)
     except KeyboardInterrupt:
         print("Interrupted by user")
     finally:
