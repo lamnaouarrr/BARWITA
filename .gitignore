@@ -1,28 +1,45 @@
-# Byte-compiled / optimized / DLL files
+# ---- Python ----
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environment
+# Virtual environment directories
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
 
-# IDE/editor folders
+# for poetry or pipenv
+.poetry/
+Pipfile.lock
+*.venv/
+
+# ---- Logs and Databases ----
+*.log
+*.sqlite3
+
+# ---- OS / Editor / IDE ----
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
 
-# Logs
-*.log
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Other
+# ---- Swap / Temp Files ----
 *.swp
 *.swo
+*.tmp
+
+# ---- Node/React ----
+node_modules/
+build/
+dist/
+*.cache
+npm-debug.log
+yarn-error.log
+
+# ---- Docker ----
+*.env  # If you store environment variables separately
+docker-compose.override.yml
