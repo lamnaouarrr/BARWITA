@@ -1,6 +1,5 @@
 # BARWITA
 
-![BARWITA Logo](path-to-your-logo.png)
 
 **BARWITA** is a remote-controlled car project powered by a Raspberry Pi 4 Model B. This project integrates motor control, camera streaming, and a graphical user interface (GUI) to enable seamless remote operation and real-time monitoring. Whether you're a hobbyist looking to dive into robotics or an enthusiast aiming to expand your IoT skills, BARWITA offers a comprehensive guide to building and customizing your own smart car.
 
@@ -16,7 +15,6 @@
     - [Installation](#installation)
       - [1. Flash Raspberry Pi OS to the MicroSD Card](#1-flash-raspberry-pi-os-to-the-microsd-card)
       - [2. Initial Headless Setup Using Ethernet](#2-initial-headless-setup-using-ethernet)
-      - [3. Configuring Wi-Fi for Headless Operation](#3-configuring-wifi-for-headless-operation)
   - [Project Roadmap](#project-roadmap)
   - [Future Documentation](#future-documentation)
   - [Contributing](#contributing)
@@ -63,12 +61,17 @@ Before you begin, ensure you have the following hardware and software components
 2. **Install Raspberry Pi Imager:**
    - Download and install [Raspberry Pi Imager v1.8.5](https://www.raspberrypi.org/software/) on your computer.
 
-3. **Flash the OS:**
-   - Open Raspberry Pi Imager.
-   - Select the **Raspberry Pi OS Lite** image.
-   - Choose your microSD card as the storage device.
-   - Click **"Write"** to begin the flashing process.
-   - Wait until the process completes and safely eject the microSD card.
+3. **Set Up Wi-Fi during Raspberry Pi OS Installation:**
+   - Open **Raspberry Pi Imager**.
+   - Select **Raspberry Pi OS Lite** as the operating system.
+   - Choose the microSD card as the storage device.
+   - Click on the **gear icon** (Advanced Options) to open the configuration menu.
+   - Enable **Set Wi-Fi SSID and Password**.
+   - Enter your **Wi-Fi SSID** and **Wi-Fi Password**.
+   - Set the **Country Code** (for example, `CN` for China).
+   - Optionally, enable **SSH** to allow remote access.
+   - Click **Save** and then **Write** to flash the OS onto the SD card.
+   - Wait for the process to complete and safely eject the SD card.
 
 #### 2. Initial Headless Setup Using Ethernet
 
@@ -103,55 +106,6 @@ Before you begin, ensure you have the following hardware and software components
    - **Password:** `raspberry`
    - **Note:** It is highly recommended to change the default password immediately after the first login for security purposes.
 
-#### 3. Configuring Wi-Fi for Headless Operation
-
-1. **Enable SSH:**
-   - If not already enabled, create an empty file named `ssh` in the `/boot` directory of the microSD card to enable SSH on boot.
-
-2. **Configure Wi-Fi:**
-   - Create a `wpa_supplicant.conf` file in the `/boot` directory with your Wi-Fi credentials:
-     ```
-     country=US
-     ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-     update_config=1
-
-     network={
-         ssid="YOUR_SSID"
-         psk="YOUR_PASSWORD"
-     }
-     ```
-   - Replace `YOUR_SSID` and `YOUR_PASSWORD` with your actual Wi-Fi network name and password.
-
-3. **Assign a Static IP Address (Optional but Recommended):**
-   - Edit the DHCP client configuration to assign a static IP to the Wi-Fi interface.
-     ```bash
-     sudo nano /etc/dhcpcd.conf
-     ```
-   - Add the following lines at the end of the file:
-     ```
-     interface wlan0
-     static ip_address=192.168.10.100/24
-     static routers=192.168.10.1
-     static domain_name_servers=192.168.10.1
-     ```
-   - Save and exit (`Ctrl + X`, then `Y`, and `Enter`).
-
-4. **Restart Networking Services:**
-   ```bash
-   sudo systemctl restart dhcpcd
-   ```
-
-5. **Verify Wi-Fi Connectivity:**
-   - Disconnect the Ethernet cable.
-   - Reconnect via Wi-Fi using the static IP (e.g., `192.168.10.100`).
-
-6. **Test SSH Access Over Wi-Fi:**
-   - Use PuTTY or Terminal to SSH into the Raspberry Pi using the static Wi-Fi IP:
-     ```bash
-     ssh pi@192.168.10.100
-     ```
-   - Ensure you can connect without the Ethernet cable.
-
 ---
 
 ## Project Roadmap
@@ -163,7 +117,7 @@ BARWITA is structured to guide you through the development of a fully functional
   - Installed Raspberry Pi OS on the microSD card.
   - Configured initial internet access via Ethernet.
   - Established headless SSH access using PuTTY.
-  - Configured Wi-Fi for wireless headless operation.
+  - Configured Wi-Fi for wireless headless operation during installation.
   - Assigned a static IP address to the Raspberry Pi.
 
 ### **Phase 2: Physical Assembly of the Car**
