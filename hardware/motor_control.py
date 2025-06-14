@@ -283,9 +283,9 @@ class KeyboardController:
     def __init__(self):
         self.running = False
         self.current_action = "stop"
-        self.speed = 0.45
+        self.speed = 1.0
         self.last_key_time = time.time()
-        self.key_timeout = 0.25  # Stop if no key pressed for 0.5 seconds
+        self.key_timeout = 0.25 # Stop if no key pressed for 0.5 seconds
 
     def get_char_non_blocking(self):
         """Get a single character from stdin without waiting for enter"""
@@ -306,7 +306,7 @@ class KeyboardController:
                 old_settings = termios.tcgetattr(fd)
                 try:
                     tty.setcbreak(fd)
-                    if select.select([sys.stdin], [], [], 0.025) == ([sys.stdin], [], []):
+                    if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
                         ch = sys.stdin.read(1)
                         return ch.lower() if ch else None
                 finally:
@@ -317,7 +317,7 @@ class KeyboardController:
 
     # --- SPEED SETTINGS (even further reduced for safer operation) ---
     BASE_SPEED = 0.015  # Even further reduced base speed for forward/backward
-    TURN_SPEED = 0.0075  # Even further reduced speed for turning (left/right)
+    TURN_SPEED = 0.00375  # Even further reduced speed for turning (left/right)
     # You can adjust these values for your hardware
 
     def _move_forward_raw(self):
