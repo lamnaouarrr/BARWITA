@@ -282,17 +282,20 @@ def run_full_test():
 class KeyboardController:
     def __init__(self):
         self.running = False
-        self.keys_pressed = set()
+        self.current_action = "stop"
         self.speed = 0.7
+        self.last_key_time = time.time()
+        self.key_timeout = 0.5  # Stop if no key pressed for 0.5 seconds
         
-    def get_char(self):
+    def get_char_non_blocking(self):
         """Get a single character from stdin without waiting for enter"""
         try:
             fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
             try:
                 tty.cbreak(fd)
-                if select.select([sys.stdin], [], [], 0.1) == ([sys.stdin], [], []):
+                # Very short timeout for responsive control
+                if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
                     ch = sys.stdin.read(1)
                     return ch
             finally:
@@ -301,41 +304,35 @@ class KeyboardController:
             # Fallback for non-Unix systems or when termios is not available
             return None
         return None
-    
     def motor_control_loop(self):
-        """Continuous motor control based on pressed keys"""
+        """Continuous motor control based on current action"""
         while self.running:
             if not PINS_INITIALIZED:
                 time.sleep(0.1)
                 continue
-                
-            # Check current key states and control motors accordingly
-            if 'w' in self.keys_pressed and 's' not in self.keys_pressed:
-                # Forward
+            
+            # Check if we should stop due to timeout
+            if time.time() - self.last_key_time > self.key_timeout:
+                self.current_action = "stop"
+            
+            # Execute current action
+            if self.current_action == "forward":
                 self._move_forward_raw()
-            elif 's' in self.keys_pressed and 'w' not in self.keys_pressed:
-                # Backward
+            elif self.current_action == "backward":
                 self._move_backward_raw()
-            elif 'd' in self.keys_pressed and 'a' not in self.keys_pressed:
-                # Turn right (right wheel backward, left wheel forward)
-                self._turn_right_raw()
-            elif 'a' in self.keys_pressed and 'd' not in self.keys_pressed:
-                # Turn left (left wheel backward, right wheel forward)
+            elif self.current_action == "left":
                 self._turn_left_raw()
-            elif 'w' in self.keys_pressed and 'd' in self.keys_pressed:
-                # Forward-right (slight right turn while moving forward)
-                self._move_forward_right_raw()
-            elif 'w' in self.keys_pressed and 'a' in self.keys_pressed:
-                # Forward-left (slight left turn while moving forward)
+            elif self.current_action == "right":
+                self._turn_right_raw()
+            elif self.current_action == "forward_left":
                 self._move_forward_left_raw()
-            elif 's' in self.keys_pressed and 'd' in self.keys_pressed:
-                # Backward-right
-                self._move_backward_right_raw()
-            elif 's' in self.keys_pressed and 'a' in self.keys_pressed:
-                # Backward-left
+            elif self.current_action == "forward_right":
+                self._move_forward_right_raw()
+            elif self.current_action == "backward_left":
                 self._move_backward_left_raw()
+            elif self.current_action == "backward_right":
+                self._move_backward_right_raw()
             else:
-                # No movement keys pressed, stop motors
                 self._stop_raw()
             
             time.sleep(0.05)  # 20Hz update rate
@@ -426,7 +423,6 @@ class KeyboardController:
             IN1.off(); IN2.off(); IN3.off(); IN4.off()
             ENA.off(); ENB.off()
         except: pass
-    
     def start_realtime_control(self):
         """Start real-time keyboard control"""
         if not PINS_INITIALIZED:
@@ -437,45 +433,57 @@ class KeyboardController:
         print("REAL-TIME KEYBOARD CONTROL")
         print("="*50)
         print("Controls:")
-        print("  W - Forward")
-        print("  S - Backward") 
-        print("  A - Turn Left")
-        print("  D - Turn Right")
-        print("  W+A - Forward Left")
-        print("  W+D - Forward Right")
-        print("  S+A - Backward Left")
-        print("  S+D - Backward Right")
+        print("  W - Forward (hold to continue)")
+        print("  S - Backward (hold to continue)") 
+        print("  A - Turn Left (hold to continue)")
+        print("  D - Turn Right (hold to continue)")
         print("  Q - Quit")
         print(f"  Speed: {self.speed * 100:.0f}%")
         print()
-        print("Hold keys to move continuously...")
-        print("Press Q to exit")
+        print("INSTRUCTIONS:")
+        print("- Hold down keys to move continuously")
+        print("- Release key to stop that movement")
+        print("- Motors stop automatically after 0.5s of no input")
+        print("- Press and hold keys, don't just tap them")
         print("="*50)
         
         self.running = True
+        self.current_action = "stop"
+        self.last_key_time = time.time()
         
         # Start motor control thread
         motor_thread = threading.Thread(target=self.motor_control_loop, daemon=True)
         motor_thread.start()
         
+        print("Press and hold W, A, S, or D keys. Press Q to quit.")
+        print("Current status: STOPPED")
+        
         try:
             while self.running:
-                char = self.get_char()
+                char = self.get_char_non_blocking()
                 if char:
                     char = char.lower()
+                    self.last_key_time = time.time()  # Update last key time
                     
                     if char == 'q':
                         print("\nExiting real-time control...")
                         break
-                    elif char in ['w', 'a', 's', 'd']:
-                        if char not in self.keys_pressed:
-                            self.keys_pressed.add(char)
-                            self._print_status()
+                    elif char == 'w':
+                        self.current_action = "forward"
+                        self._print_status()
+                    elif char == 's':
+                        self.current_action = "backward"
+                        self._print_status()
+                    elif char == 'a':
+                        self.current_action = "left"
+                        self._print_status()
+                    elif char == 'd':
+                        self.current_action = "right"
+                        self._print_status()
                     elif char == '\x1b':  # ESC key
                         break
                 
-                # Check if keys are still being held (this is a simplified approach)
-                # In a real implementation, you'd need proper key release detection
+                # Small delay to prevent excessive CPU usage
                 time.sleep(0.02)
                 
         except KeyboardInterrupt:
@@ -487,11 +495,19 @@ class KeyboardController:
     
     def _print_status(self):
         """Print current movement status"""
-        if not self.keys_pressed:
-            print("Status: STOPPED")
-        else:
-            keys_str = '+'.join(sorted(self.keys_pressed)).upper()
-            print(f"Status: {keys_str}")
+        status_map = {
+            "forward": "FORWARD",
+            "backward": "BACKWARD", 
+            "left": "TURN LEFT",
+            "right": "TURN RIGHT",
+            "forward_left": "FORWARD LEFT",
+            "forward_right": "FORWARD RIGHT",
+            "backward_left": "BACKWARD LEFT",
+            "backward_right": "BACKWARD RIGHT",
+            "stop": "STOPPED"
+        }
+        status = status_map.get(self.current_action, "UNKNOWN")
+        print(f"\rStatus: {status}                    ", end="", flush=True)
 
 def manual_control_simple():
     """Simple manual control with single key presses"""
@@ -526,6 +542,69 @@ def manual_control_simple():
     
     stop_all_motors()
     print("Manual control ended")
+
+def realtime_control_alternative():
+    """Alternative real-time control using continuous input"""
+    if not PINS_INITIALIZED:
+        print("Error: GPIO pins not initialized")
+        return
+        
+    print("\n" + "="*50)
+    print("ALTERNATIVE REAL-TIME CONTROL")
+    print("="*50)
+    print("Controls:")
+    print("  W - Forward")
+    print("  S - Backward") 
+    print("  A - Turn Left")
+    print("  D - Turn Right")
+    print("  X - Stop")
+    print("  Q - Quit")
+    print()
+    print("INSTRUCTIONS:")
+    print("- Keep pressing the same key repeatedly to continue movement")
+    print("- Press X to stop motors")
+    print("- Press Q to quit")
+    print("="*50)
+    
+    try:
+        while True:
+            try:
+                # Use input with a short prompt
+                key = input("Command (W/A/S/D/X/Q): ").strip().lower()
+                
+                if key == 'q':
+                    print("Exiting control...")
+                    break
+                elif key == 'w':
+                    move_forward(0.7)
+                    print("Moving FORWARD - Keep pressing W to continue")
+                elif key == 's':
+                    move_backward(0.7)
+                    print("Moving BACKWARD - Keep pressing S to continue")
+                elif key == 'a':
+                    turn_left(0.7)
+                    print("Turning LEFT - Keep pressing A to continue")
+                elif key == 'd':
+                    turn_right(0.7)
+                    print("Turning RIGHT - Keep pressing D to continue")
+                elif key == 'x':
+                    stop_all_motors()
+                    print("STOPPED")
+                elif key == '':
+                    # Just pressing enter stops motors
+                    stop_all_motors()
+                    print("STOPPED")
+                else:
+                    print("Invalid command. Use W/A/S/D/X/Q")
+                    
+            except EOFError:
+                break
+                
+    except KeyboardInterrupt:
+        print("\nControl interrupted")
+    finally:
+        stop_all_motors()
+        print("Motors stopped")
 
 # Main execution for testing
 if __name__ == "__main__":
@@ -569,11 +648,12 @@ if __name__ == "__main__":
             print("2. Test Motor B only")
             print("3. Test both motors")
             print("4. Run full test sequence")
-            print("5. Real-time keyboard control (hold keys)")
+            print("5. Real-time keyboard control (experimental)")
             print("6. Simple manual control (press enter)")
+            print("7. Alternative real-time control (recommended)")
             print("0. Exit")
             
-            choice = input("Enter choice (0-6): ").strip()
+            choice = input("Enter choice (0-7): ").strip()
             
             if choice == "1":
                 test_motor_a()
@@ -588,6 +668,8 @@ if __name__ == "__main__":
                 controller.start_realtime_control()
             elif choice == "6":
                 manual_control_simple()
+            elif choice == "7":
+                realtime_control_alternative()
             elif choice == "0":
                 break
             else:
