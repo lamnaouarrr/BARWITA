@@ -285,7 +285,7 @@ class KeyboardController:
         self.current_action = "stop"
         self.speed = 0.7
         self.last_key_time = time.time()
-        self.key_timeout = 0.5  # Stop if no key pressed for 0.5 seconds
+        self.key_timeout = 0.25  # Stop if no key pressed for 0.5 seconds
 
     def get_char_non_blocking(self):
         """Get a single character from stdin without waiting for enter"""
@@ -316,8 +316,8 @@ class KeyboardController:
         return None
 
     # --- SPEED SETTINGS (even further reduced for safer operation) ---
-    BASE_SPEED = 0.03  # Even further reduced base speed for forward/backward
-    TURN_SPEED = 0.015  # Even further reduced speed for turning (left/right)
+    BASE_SPEED = 0.015  # Even further reduced base speed for forward/backward
+    TURN_SPEED = 0.0075  # Even further reduced speed for turning (left/right)
     # You can adjust these values for your hardware
 
     def _move_forward_raw(self):
