@@ -1,2 +1,7 @@
+<<<<<<< HEAD
 flask
 gpiozero
+=======
+gpiozero
+flask
+>>>>>>> 7de5222e77cf22a6d2c8aa622f7e9a816b207e37
