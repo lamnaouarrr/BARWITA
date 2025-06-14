@@ -346,7 +346,7 @@ class KeyboardController:
 
     def _move_forward_raw(self):
         try:
-            # Both motors forward
+            # Both motors forward (left and right motors forward)
             IN1.on(); IN2.off(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
                 ENA.value = self.BASE_SPEED; ENB.value = self.BASE_SPEED
@@ -356,7 +356,7 @@ class KeyboardController:
 
     def _move_backward_raw(self):
         try:
-            # Both motors backward
+            # Both motors backward (left and right motors backward)
             IN1.off(); IN2.on(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
                 ENA.value = self.BASE_SPEED; ENB.value = self.BASE_SPEED
