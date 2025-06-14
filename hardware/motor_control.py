@@ -341,40 +341,40 @@ class KeyboardController:
 
     def _move_forward_raw(self):
         try:
-            # Both motors forward
+            # Both motors forward (now mapped to A)
             IN1.on(); IN2.off(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
-                ENA.value = self.speed; ENB.value = self.speed
+                ENA.value = 0.5; ENB.value = 0.5
             else:
                 ENA.on(); ENB.on()
         except: pass
 
     def _move_backward_raw(self):
         try:
-            # Both motors backward
+            # Both motors backward (now mapped to D)
             IN1.off(); IN2.on(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
-                ENA.value = self.speed; ENB.value = self.speed
+                ENA.value = 0.5; ENB.value = 0.5
             else:
                 ENA.on(); ENB.on()
         except: pass
 
     def _turn_left_raw(self):
         try:
-            # Left motor backward, right motor forward
+            # Left motor backward, right motor forward (now mapped to W)
             IN1.off(); IN2.on(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
-                ENA.value = self.speed; ENB.value = self.speed
+                ENA.value = 0.35; ENB.value = 0.35
             else:
                 ENA.on(); ENB.on()
         except: pass
 
     def _turn_right_raw(self):
         try:
-            # Left motor forward, right motor backward
+            # Left motor forward, right motor backward (now mapped to S)
             IN1.on(); IN2.off(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
-                ENA.value = self.speed; ENB.value = self.speed
+                ENA.value = 0.35; ENB.value = 0.35
             else:
                 ENA.on(); ENB.on()
         except: pass
@@ -391,12 +391,12 @@ class KeyboardController:
         print("REAL-TIME KEYBOARD CONTROL")
         print("="*50)
         print("Controls:")
-        print("  W - Forward")
-        print("  S - Backward")
-        print("  A - Turn Left")
-        print("  D - Turn Right")
+        print("  A - Forward (hold to continue)")
+        print("  D - Backward (hold to continue)")
+        print("  W - Turn Left (hold to continue)")
+        print("  S - Turn Right (hold to continue)")
         print("  Q - Quit")
-        print(f"  Speed: {self.speed * 100:.0f}%")
+        print(f"  Speed: 50% (turning: 35%)")
         print()
         print("INSTRUCTIONS:")
         print("- Hold down keys for continuous movement")
@@ -408,7 +408,7 @@ class KeyboardController:
         self.last_key_time = time.time()
         motor_thread = threading.Thread(target=self.motor_control_loop, daemon=True)
         motor_thread.start()
-        print("Press W, A, S, or D keys. Press Q to quit.")
+        print("Press A/D/W/S keys. Press Q to quit.")
         print("Status: STOPPED")
         try:
             while self.running:
@@ -418,16 +418,16 @@ class KeyboardController:
                     if char == 'q':
                         print("\nExiting real-time control...")
                         break
-                    elif char == 'w':
+                    elif char == 'a':
                         self.current_action = "forward"
                         self._print_status()
-                    elif char == 's':
+                    elif char == 'd':
                         self.current_action = "backward"
                         self._print_status()
-                    elif char == 'a':
+                    elif char == 'w':
                         self.current_action = "left"
                         self._print_status()
-                    elif char == 'd':
+                    elif char == 's':
                         self.current_action = "right"
                         self._print_status()
                     elif char == '\x1b':
