@@ -31,27 +31,6 @@ def create_motor_pins():
             print("GPIO initialization failed completely")
             return None, None, False
 
-def create_motor_pins():
-    """Create motor control pins with fallback for PWM issues"""
-    try:
-        # Try to create PWM devices first
-        ena = PWMOutputDevice(18)
-        enb = PWMOutputDevice(25)
-        print("PWM devices created successfully")
-        return ena, enb, True
-    except Exception as e:
-        print(f"PWM creation failed: {e}")
-        print("Falling back to regular OutputDevice (no speed control)")
-        try:
-            # Fallback to regular OutputDevice
-            ena = OutputDevice(18)
-            enb = OutputDevice(25)
-            return ena, enb, False
-        except Exception as e2:
-            print(f"Failed to create OutputDevice: {e2}")
-            print("GPIO initialization failed completely")
-            return None, None, False
-
 # Global variables for GPIO devices
 ENA = ENB = IN1 = IN2 = IN3 = IN4 = None
 PWM_AVAILABLE = False
@@ -550,8 +529,6 @@ def manual_control_simple():
 
 # Main execution for testing
 if __name__ == "__main__":
-    import time
-    
     print("DC Motor Control with gpiozero")
     print("Pin Configuration:")
     print("  Motor A: ENA=18, IN1=23, IN2=24")
@@ -584,7 +561,8 @@ if __name__ == "__main__":
         print("  # or")
         print("  pip install RPi.GPIO pigpio")
         print()
-      try:
+    
+    try:
         while True:
             print("\nSelect an option:")
             print("1. Test Motor A only")
