@@ -1,2 +1,11 @@
 flask
 gpiozero
+
+# GPIO Libraries for Raspberry Pi motor control
+# These provide proper PWM support and hardware access
+RPi.GPIO>=0.7.1
+pigpio>=1.78
+lgpio>=0.2.2.0
+
+# System libraries (install via apt on Raspberry Pi)
+# sudo apt install python3-rpi.gpio python3-pigpio python3-lgpio

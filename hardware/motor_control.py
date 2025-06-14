@@ -1,5 +1,11 @@
 from gpiozero import OutputDevice, PWMOutputDevice
 import warnings
+import sys
+import termios
+import tty
+import select
+import threading
+import time
 
 # Suppress gpiozero fallback warnings for cleaner output
 warnings.filterwarnings("ignore", category=UserWarning, module="gpiozero")
@@ -25,26 +31,59 @@ def create_motor_pins():
             print("GPIO initialization failed completely")
             return None, None, False
 
-# Create motor pins with fallback
-ENA, ENB, PWM_AVAILABLE = create_motor_pins()
-
-# Only create direction pins if enable pins were successful
-if ENA is not None and ENB is not None:
+def create_motor_pins():
+    """Create motor control pins with fallback for PWM issues"""
     try:
-        IN1 = OutputDevice(23)    # Input pin 1 for Motor A (direction control)
-        IN2 = OutputDevice(24)    # Input pin 2 for Motor A (direction control)
-        IN3 = OutputDevice(12)    # Input pin 3 for Motor B (direction control)
-        IN4 = OutputDevice(16)    # Input pin 4 for Motor B (direction control)
-        PINS_INITIALIZED = True
-        print("All GPIO pins initialized successfully")
+        # Try to create PWM devices first
+        ena = PWMOutputDevice(18)
+        enb = PWMOutputDevice(25)
+        print("PWM devices created successfully")
+        return ena, enb, True
     except Exception as e:
-        print(f"Failed to create direction control pins: {e}")
+        print(f"PWM creation failed: {e}")
+        print("Falling back to regular OutputDevice (no speed control)")
+        try:
+            # Fallback to regular OutputDevice
+            ena = OutputDevice(18)
+            enb = OutputDevice(25)
+            return ena, enb, False
+        except Exception as e2:
+            print(f"Failed to create OutputDevice: {e2}")
+            print("GPIO initialization failed completely")
+            return None, None, False
+
+# Global variables for GPIO devices
+ENA = ENB = IN1 = IN2 = IN3 = IN4 = None
+PWM_AVAILABLE = False
+PINS_INITIALIZED = False
+
+def initialize_gpio():
+    """Initialize all GPIO pins"""
+    global ENA, ENB, IN1, IN2, IN3, IN4, PWM_AVAILABLE, PINS_INITIALIZED
+    
+    # Create motor pins with fallback
+    ENA, ENB, PWM_AVAILABLE = create_motor_pins()
+    
+    # Only create direction pins if enable pins were successful
+    if ENA is not None and ENB is not None:
+        try:
+            IN1 = OutputDevice(23)    # Input pin 1 for Motor A (direction control)
+            IN2 = OutputDevice(24)    # Input pin 2 for Motor A (direction control)
+            IN3 = OutputDevice(12)    # Input pin 3 for Motor B (direction control)
+            IN4 = OutputDevice(16)    # Input pin 4 for Motor B (direction control)
+            PINS_INITIALIZED = True
+            print("All GPIO pins initialized successfully")
+        except Exception as e:
+            print(f"Failed to create direction control pins: {e}")
+            PINS_INITIALIZED = False
+            IN1 = IN2 = IN3 = IN4 = None
+    else:
+        print("Cannot create direction pins - enable pins failed")
         PINS_INITIALIZED = False
         IN1 = IN2 = IN3 = IN4 = None
-else:
-    print("Cannot create direction pins - enable pins failed")
-    PINS_INITIALIZED = False
-    IN1 = IN2 = IN3 = IN4 = None
+
+# Initialize GPIO on import
+initialize_gpio()
 
 # Example motor control functions
 def motor_a_forward(speed=1.0):
@@ -260,6 +299,255 @@ def run_full_test():
     finally:
         cleanup()
 
+# Real-time keyboard control system
+class KeyboardController:
+    def __init__(self):
+        self.running = False
+        self.keys_pressed = set()
+        self.speed = 0.7
+        
+    def get_char(self):
+        """Get a single character from stdin without waiting for enter"""
+        try:
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.cbreak(fd)
+                if select.select([sys.stdin], [], [], 0.1) == ([sys.stdin], [], []):
+                    ch = sys.stdin.read(1)
+                    return ch
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        except:
+            # Fallback for non-Unix systems or when termios is not available
+            return None
+        return None
+    
+    def motor_control_loop(self):
+        """Continuous motor control based on pressed keys"""
+        while self.running:
+            if not PINS_INITIALIZED:
+                time.sleep(0.1)
+                continue
+                
+            # Check current key states and control motors accordingly
+            if 'w' in self.keys_pressed and 's' not in self.keys_pressed:
+                # Forward
+                self._move_forward_raw()
+            elif 's' in self.keys_pressed and 'w' not in self.keys_pressed:
+                # Backward
+                self._move_backward_raw()
+            elif 'd' in self.keys_pressed and 'a' not in self.keys_pressed:
+                # Turn right (right wheel backward, left wheel forward)
+                self._turn_right_raw()
+            elif 'a' in self.keys_pressed and 'd' not in self.keys_pressed:
+                # Turn left (left wheel backward, right wheel forward)
+                self._turn_left_raw()
+            elif 'w' in self.keys_pressed and 'd' in self.keys_pressed:
+                # Forward-right (slight right turn while moving forward)
+                self._move_forward_right_raw()
+            elif 'w' in self.keys_pressed and 'a' in self.keys_pressed:
+                # Forward-left (slight left turn while moving forward)
+                self._move_forward_left_raw()
+            elif 's' in self.keys_pressed and 'd' in self.keys_pressed:
+                # Backward-right
+                self._move_backward_right_raw()
+            elif 's' in self.keys_pressed and 'a' in self.keys_pressed:
+                # Backward-left
+                self._move_backward_left_raw()
+            else:
+                # No movement keys pressed, stop motors
+                self._stop_raw()
+            
+            time.sleep(0.05)  # 20Hz update rate
+    
+    def _move_forward_raw(self):
+        """Raw forward movement without error checking"""
+        try:
+            IN1.on(); IN2.off(); IN3.on(); IN4.off()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed; ENB.value = self.speed
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _move_backward_raw(self):
+        """Raw backward movement without error checking"""
+        try:
+            IN1.off(); IN2.on(); IN3.off(); IN4.on()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed; ENB.value = self.speed
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _turn_right_raw(self):
+        """Raw right turn (left motor forward, right motor backward)"""
+        try:
+            IN1.on(); IN2.off(); IN3.off(); IN4.on()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed; ENB.value = self.speed
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _turn_left_raw(self):
+        """Raw left turn (left motor backward, right motor forward)"""
+        try:
+            IN1.off(); IN2.on(); IN3.on(); IN4.off()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed; ENB.value = self.speed
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _move_forward_right_raw(self):
+        """Forward with slight right turn"""
+        try:
+            IN1.on(); IN2.off(); IN3.on(); IN4.off()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed; ENB.value = self.speed * 0.6  # Slow down right motor
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _move_forward_left_raw(self):
+        """Forward with slight left turn"""
+        try:
+            IN1.on(); IN2.off(); IN3.on(); IN4.off()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed * 0.6; ENB.value = self.speed  # Slow down left motor
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _move_backward_right_raw(self):
+        """Backward with slight right turn"""
+        try:
+            IN1.off(); IN2.on(); IN3.off(); IN4.on()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed; ENB.value = self.speed * 0.6
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _move_backward_left_raw(self):
+        """Backward with slight left turn"""
+        try:
+            IN1.off(); IN2.on(); IN3.off(); IN4.on()
+            if PWM_AVAILABLE:
+                ENA.value = self.speed * 0.6; ENB.value = self.speed
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+    
+    def _stop_raw(self):
+        """Raw stop without error checking"""
+        try:
+            IN1.off(); IN2.off(); IN3.off(); IN4.off()
+            ENA.off(); ENB.off()
+        except: pass
+    
+    def start_realtime_control(self):
+        """Start real-time keyboard control"""
+        if not PINS_INITIALIZED:
+            print("Error: GPIO pins not initialized")
+            return
+        
+        print("\n" + "="*50)
+        print("REAL-TIME KEYBOARD CONTROL")
+        print("="*50)
+        print("Controls:")
+        print("  W - Forward")
+        print("  S - Backward") 
+        print("  A - Turn Left")
+        print("  D - Turn Right")
+        print("  W+A - Forward Left")
+        print("  W+D - Forward Right")
+        print("  S+A - Backward Left")
+        print("  S+D - Backward Right")
+        print("  Q - Quit")
+        print(f"  Speed: {self.speed * 100:.0f}%")
+        print()
+        print("Hold keys to move continuously...")
+        print("Press Q to exit")
+        print("="*50)
+        
+        self.running = True
+        
+        # Start motor control thread
+        motor_thread = threading.Thread(target=self.motor_control_loop, daemon=True)
+        motor_thread.start()
+        
+        try:
+            while self.running:
+                char = self.get_char()
+                if char:
+                    char = char.lower()
+                    
+                    if char == 'q':
+                        print("\nExiting real-time control...")
+                        break
+                    elif char in ['w', 'a', 's', 'd']:
+                        if char not in self.keys_pressed:
+                            self.keys_pressed.add(char)
+                            self._print_status()
+                    elif char == '\x1b':  # ESC key
+                        break
+                
+                # Check if keys are still being held (this is a simplified approach)
+                # In a real implementation, you'd need proper key release detection
+                time.sleep(0.02)
+                
+        except KeyboardInterrupt:
+            print("\nControl interrupted")
+        finally:
+            self.running = False
+            self._stop_raw()
+            print("Motors stopped")
+    
+    def _print_status(self):
+        """Print current movement status"""
+        if not self.keys_pressed:
+            print("Status: STOPPED")
+        else:
+            keys_str = '+'.join(sorted(self.keys_pressed)).upper()
+            print(f"Status: {keys_str}")
+
+def manual_control_simple():
+    """Simple manual control with single key presses"""
+    print("\nSimple Manual Control Mode:")
+    print("Commands: w(forward), s(backward), a(left), d(right), x(stop), q(quit)")
+    print("Note: Press enter after each command")
+    
+    while True:
+        try:
+            cmd = input("Enter command: ").strip().lower()
+            if cmd == "q":
+                break
+            elif cmd == "w":
+                move_forward(0.7)
+                print("Moving forward...")
+            elif cmd == "s":
+                move_backward(0.7)
+                print("Moving backward...")
+            elif cmd == "a":
+                turn_left(0.7)
+                print("Turning left...")
+            elif cmd == "d":
+                turn_right(0.7)
+                print("Turning right...")
+            elif cmd == "x":
+                stop_all_motors()
+                print("Stopped")
+            else:
+                print("Invalid command. Use: w/s/a/d/x/q")
+        except KeyboardInterrupt:
+            break
+    
+    stop_all_motors()
+    print("Manual control ended")
+
 # Main execution for testing
 if __name__ == "__main__":
     import time
@@ -296,18 +584,18 @@ if __name__ == "__main__":
         print("  # or")
         print("  pip install RPi.GPIO pigpio")
         print()
-    
-    try:
+      try:
         while True:
             print("\nSelect an option:")
             print("1. Test Motor A only")
             print("2. Test Motor B only")
             print("3. Test both motors")
             print("4. Run full test sequence")
-            print("5. Manual control")
+            print("5. Real-time keyboard control (hold keys)")
+            print("6. Simple manual control (press enter)")
             print("0. Exit")
             
-            choice = input("Enter choice (0-5): ").strip()
+            choice = input("Enter choice (0-6): ").strip()
             
             if choice == "1":
                 test_motor_a()
@@ -318,24 +606,10 @@ if __name__ == "__main__":
             elif choice == "4":
                 run_full_test()
             elif choice == "5":
-                print("\nManual control mode:")
-                print("Commands: forward, backward, left, right, stop, quit")
-                while True:
-                    cmd = input("Enter command: ").strip().lower()
-                    if cmd == "forward":
-                        move_forward(0.7)
-                    elif cmd == "backward":
-                        move_backward(0.7)
-                    elif cmd == "left":
-                        turn_left(0.7)
-                    elif cmd == "right":
-                        turn_right(0.7)
-                    elif cmd == "stop":
-                        stop_all_motors()
-                    elif cmd == "quit":
-                        break
-                    else:
-                        print("Invalid command")
+                controller = KeyboardController()
+                controller.start_realtime_control()
+            elif choice == "6":
+                manual_control_simple()
             elif choice == "0":
                 break
             else:
