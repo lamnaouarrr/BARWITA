@@ -360,6 +360,12 @@ class KeyboardController:
                 ENA.on(); ENB.on()
         except: pass
 
+    def _stop_raw(self):
+        try:
+            stop_all_motors()
+        except Exception:
+            pass
+
     def motor_control_loop(self):
         """Continuous motor control based on current action"""
         while self.running:
