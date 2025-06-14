@@ -286,11 +286,10 @@ class KeyboardController:
         self.speed = 0.7
         self.last_key_time = time.time()
         self.key_timeout = 0.5  # Stop if no key pressed for 0.5 seconds
-        
+
     def get_char_non_blocking(self):
         """Get a single character from stdin without waiting for enter"""
         try:
-            # Check if running on Windows (where termios won't work)
             if sys.platform.startswith('win'):
                 import msvcrt
                 if msvcrt.kbhit():
@@ -300,26 +299,19 @@ class KeyboardController:
                     return ch.lower()
                 return None
             else:
-                # Unix/Linux systems - check if termios is available
+                import termios
+                import tty
+                import select
+                fd = sys.stdin.fileno()
+                old_settings = termios.tcgetattr(fd)
                 try:
-                    import termios
-                    import tty
-                    import select
-                    fd = sys.stdin.fileno()
-                    old_settings = termios.tcgetattr(fd)
-                    try:
-                        tty.cbreak(fd)
-                        # Very short timeout for responsive control
-                        if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
-                            ch = sys.stdin.read(1)
-                            return ch.lower() if ch else None
-                    finally:
-                        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-                except ImportError:
-                    # termios not available, return None
-                    return None
-        except Exception as e:
-            # Suppress repeated error messages
+                    tty.setcbreak(fd)
+                    if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
+                        ch = sys.stdin.read(1)
+                        return ch.lower() if ch else None
+                finally:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        except Exception:
             return None
         return None
 
@@ -329,13 +321,11 @@ class KeyboardController:
             if not PINS_INITIALIZED:
                 time.sleep(0.1)
                 continue
-            
-            # Check if we should stop due to timeout
+            # Stop if no key pressed for timeout
             if time.time() - self.last_key_time > self.key_timeout:
                 if self.current_action != "stop":
                     self.current_action = "stop"
                     self._print_status()
-            
             # Execute current action
             if self.current_action == "forward":
                 self._move_forward_raw()
@@ -347,11 +337,9 @@ class KeyboardController:
                 self._turn_right_raw()
             else:
                 self._stop_raw()
-            
-            time.sleep(0.1)  # 10Hz update rate
-    
+            time.sleep(0.05)
+
     def _move_forward_raw(self):
-        """Raw forward movement without error checking"""
         try:
             IN1.on(); IN2.off(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
@@ -359,9 +347,7 @@ class KeyboardController:
             else:
                 ENA.on(); ENB.on()
         except: pass
-    
     def _move_backward_raw(self):
-        """Raw backward movement without error checking"""
         try:
             IN1.off(); IN2.on(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
@@ -369,9 +355,7 @@ class KeyboardController:
             else:
                 ENA.on(); ENB.on()
         except: pass
-    
     def _turn_right_raw(self):
-        """Raw right turn (left motor forward, right motor backward)"""
         try:
             IN1.on(); IN2.off(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
@@ -379,9 +363,7 @@ class KeyboardController:
             else:
                 ENA.on(); ENB.on()
         except: pass
-    
     def _turn_left_raw(self):
-        """Raw left turn (left motor backward, right motor forward)"""
         try:
             IN1.off(); IN2.on(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
@@ -389,58 +371,43 @@ class KeyboardController:
             else:
                 ENA.on(); ENB.on()
         except: pass
-    
     def _stop_raw(self):
-        """Raw stop without error checking"""
         try:
-            IN1.off(); IN2.off(); IN3.off(); IN4.off()
-            ENA.off(); ENB.off()
+            IN1.off(); IN2.off(); IN3.off(); IN4.off(); ENA.off(); ENB.off()
         except: pass
 
     def start_realtime_control(self):
-        """Start real-time keyboard control"""
         if not PINS_INITIALIZED:
             print("Error: GPIO pins not initialized")
             return
-        
         print("\n" + "="*50)
         print("REAL-TIME KEYBOARD CONTROL")
         print("="*50)
         print("Controls:")
         print("  W - Forward")
-        print("  S - Backward") 
+        print("  S - Backward")
         print("  A - Turn Left")
         print("  D - Turn Right")
         print("  Q - Quit")
         print(f"  Speed: {self.speed * 100:.0f}%")
         print()
         print("INSTRUCTIONS:")
-        if sys.platform.startswith('win'):
-            print("- On Windows: Press keys repeatedly for movement")
-            print("- Motors stop automatically after 0.5s of no input")
-        else:
-            print("- Hold down keys for continuous movement")
-            print("- Release key to stop that movement")
-            print("- Motors stop automatically after 0.5s of no input")
+        print("- Hold down keys for continuous movement")
+        print("- Release key to stop that movement")
+        print("- Motors stop automatically after 0.5s of no input")
         print("="*50)
-        
         self.running = True
         self.current_action = "stop"
         self.last_key_time = time.time()
-        
-        # Start motor control thread
         motor_thread = threading.Thread(target=self.motor_control_loop, daemon=True)
         motor_thread.start()
-        
         print("Press W, A, S, or D keys. Press Q to quit.")
         print("Status: STOPPED")
-        
         try:
             while self.running:
                 char = self.get_char_non_blocking()
                 if char:
-                    self.last_key_time = time.time()  # Update last key time
-                    
+                    self.last_key_time = time.time()
                     if char == 'q':
                         print("\nExiting real-time control...")
                         break
@@ -456,24 +423,19 @@ class KeyboardController:
                     elif char == 'd':
                         self.current_action = "right"
                         self._print_status()
-                    elif char == '\x1b':  # ESC key
+                    elif char == '\x1b':
                         break
-                
-                # Small delay to prevent excessive CPU usage
                 time.sleep(0.02)
-                
         except KeyboardInterrupt:
             print("\nControl interrupted")
         finally:
             self.running = False
             stop_all_motors()
             print("\nMotors stopped")
-    
     def _print_status(self):
-        """Print current movement status"""
         status_map = {
             "forward": "FORWARD",
-            "backward": "BACKWARD", 
+            "backward": "BACKWARD",
             "left": "TURN LEFT",
             "right": "TURN RIGHT",
             "stop": "STOPPED"
