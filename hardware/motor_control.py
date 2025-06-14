@@ -384,6 +384,12 @@ class KeyboardController:
                 ENA.on(); ENB.on()
         except: pass
 
+    def _stop_raw(self):
+        try:
+            stop_all_motors()
+        except Exception:
+            pass
+
     def start_realtime_control(self):
         if not PINS_INITIALIZED:
             print("Error: GPIO pins not initialized")
