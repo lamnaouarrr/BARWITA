@@ -1,12 +1,31 @@
 from gpiozero import OutputDevice, PWMOutputDevice
+import warnings
 
-# Motor A pins
-ENA = PWMOutputDevice(18)  # Enable pin for Motor A (PWM for speed control)
+# Suppress gpiozero fallback warnings for cleaner output
+warnings.filterwarnings("ignore", category=UserWarning, module="gpiozero")
+
+def create_motor_pins():
+    """Create motor control pins with fallback for PWM issues"""
+    try:
+        # Try to create PWM devices first
+        ena = PWMOutputDevice(18)
+        enb = PWMOutputDevice(25)
+        print("PWM devices created successfully")
+        return ena, enb, True
+    except Exception as e:
+        print(f"PWM creation failed: {e}")
+        print("Falling back to regular OutputDevice (no speed control)")
+        # Fallback to regular OutputDevice
+        ena = OutputDevice(18)
+        enb = OutputDevice(25)
+        return ena, enb, False
+
+# Create motor pins with fallback
+ENA, ENB, PWM_AVAILABLE = create_motor_pins()
+
+# Motor direction control pins
 IN1 = OutputDevice(23)    # Input pin 1 for Motor A (direction control)
 IN2 = OutputDevice(24)    # Input pin 2 for Motor A (direction control)
-
-# Motor B pins
-ENB = PWMOutputDevice(25)  # Enable pin for Motor B (PWM for speed control)
 IN3 = OutputDevice(12)    # Input pin 3 for Motor B (direction control)
 IN4 = OutputDevice(16)    # Input pin 4 for Motor B (direction control)
 
@@ -15,13 +34,19 @@ def motor_a_forward(speed=1.0):
     """Move Motor A forward at specified speed (0.0 to 1.0)"""
     IN1.on()
     IN2.off()
-    ENA.value = speed
+    if PWM_AVAILABLE:
+        ENA.value = speed
+    else:
+        ENA.on()  # Full speed only
 
 def motor_a_backward(speed=1.0):
     """Move Motor A backward at specified speed (0.0 to 1.0)"""
     IN1.off()
     IN2.on()
-    ENA.value = speed
+    if PWM_AVAILABLE:
+        ENA.value = speed
+    else:
+        ENA.on()  # Full speed only
 
 def motor_a_stop():
     """Stop Motor A"""
@@ -33,13 +58,19 @@ def motor_b_forward(speed=1.0):
     """Move Motor B forward at specified speed (0.0 to 1.0)"""
     IN3.on()
     IN4.off()
-    ENB.value = speed
+    if PWM_AVAILABLE:
+        ENB.value = speed
+    else:
+        ENB.on()  # Full speed only
 
 def motor_b_backward(speed=1.0):
     """Move Motor B backward at specified speed (0.0 to 1.0)"""
     IN3.off()
     IN4.on()
-    ENB.value = speed
+    if PWM_AVAILABLE:
+        ENB.value = speed
+    else:
+        ENB.on()  # Full speed only
 
 def motor_b_stop():
     """Stop Motor B"""
@@ -176,9 +207,19 @@ if __name__ == "__main__":
     
     print("DC Motor Control with gpiozero")
     print("Pin Configuration:")
-    print("  Motor A: ENA=18(PWM), IN1=23, IN2=24")
-    print("  Motor B: ENB=25(PWM), IN3=12, IN4=16")
+    print("  Motor A: ENA=18, IN1=23, IN2=24")
+    print("  Motor B: ENB=25, IN3=12, IN4=16")
+    print(f"  PWM Support: {'Available' if PWM_AVAILABLE else 'Not Available (Full speed only)'}")
     print()
+    
+    if not PWM_AVAILABLE:
+        print("NOTE: Running without PWM support. Motors will run at full speed only.")
+        print("To enable PWM, install proper GPIO libraries:")
+        print("  sudo apt update")
+        print("  sudo apt install python3-rpi.gpio python3-pigpio")
+        print("  # or")
+        print("  pip install RPi.GPIO pigpio")
+        print()
     
     try:
         while True:
