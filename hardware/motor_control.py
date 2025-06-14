@@ -316,8 +316,8 @@ class KeyboardController:
         return None
 
     # --- SPEED SETTINGS (even further reduced for safer operation) ---
-    BASE_SPEED = 0.12  # Even further reduced base speed for forward/backward
-    TURN_SPEED = 0.06  # Even further reduced speed for turning (left/right)
+    BASE_SPEED = 0.06  # Even further reduced base speed for forward/backward
+    TURN_SPEED = 0.03  # Even further reduced speed for turning (left/right)
     # You can adjust these values for your hardware
 
     def _move_forward_raw(self):
