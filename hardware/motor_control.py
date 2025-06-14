@@ -294,23 +294,32 @@ class KeyboardController:
             if sys.platform.startswith('win'):
                 import msvcrt
                 if msvcrt.kbhit():
-                    return msvcrt.getch().decode('utf-8').lower()
+                    ch = msvcrt.getch()
+                    if isinstance(ch, bytes):
+                        ch = ch.decode('utf-8')
+                    return ch.lower()
                 return None
             else:
-                # Unix/Linux systems
-                fd = sys.stdin.fileno()
-                old_settings = termios.tcgetattr(fd)
+                # Unix/Linux systems - check if termios is available
                 try:
-                    tty.cbreak(fd)
-                    # Very short timeout for responsive control
-                    if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
-                        ch = sys.stdin.read(1)
-                        return ch.lower() if ch else None
-                finally:
-                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                    import termios
+                    import tty
+                    import select
+                    fd = sys.stdin.fileno()
+                    old_settings = termios.tcgetattr(fd)
+                    try:
+                        tty.cbreak(fd)
+                        # Very short timeout for responsive control
+                        if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
+                            ch = sys.stdin.read(1)
+                            return ch.lower() if ch else None
+                    finally:
+                        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                except ImportError:
+                    # termios not available, return None
+                    return None
         except Exception as e:
-            # Fallback for when libraries are not available
-            print(f"Keyboard input error: {e}")
+            # Suppress repeated error messages
             return None
         return None
 
@@ -323,7 +332,9 @@ class KeyboardController:
             
             # Check if we should stop due to timeout
             if time.time() - self.last_key_time > self.key_timeout:
-                self.current_action = "stop"
+                if self.current_action != "stop":
+                    self.current_action = "stop"
+                    self._print_status()
             
             # Execute current action
             if self.current_action == "forward":
@@ -337,7 +348,7 @@ class KeyboardController:
             else:
                 self._stop_raw()
             
-            time.sleep(0.05)  # 20Hz update rate
+            time.sleep(0.1)  # 10Hz update rate
     
     def _move_forward_raw(self):
         """Raw forward movement without error checking"""
@@ -396,18 +407,21 @@ class KeyboardController:
         print("REAL-TIME KEYBOARD CONTROL")
         print("="*50)
         print("Controls:")
-        print("  W - Forward (hold to continue)")
-        print("  S - Backward (hold to continue)") 
-        print("  A - Turn Left (hold to continue)")
-        print("  D - Turn Right (hold to continue)")
+        print("  W - Forward")
+        print("  S - Backward") 
+        print("  A - Turn Left")
+        print("  D - Turn Right")
         print("  Q - Quit")
         print(f"  Speed: {self.speed * 100:.0f}%")
         print()
         print("INSTRUCTIONS:")
-        print("- Hold down keys to move continuously")
-        print("- Release key to stop that movement")
-        print("- Motors stop automatically after 0.5s of no input")
-        print("- Press and hold keys, don't just tap them")
+        if sys.platform.startswith('win'):
+            print("- On Windows: Press keys repeatedly for movement")
+            print("- Motors stop automatically after 0.5s of no input")
+        else:
+            print("- Hold down keys for continuous movement")
+            print("- Release key to stop that movement")
+            print("- Motors stop automatically after 0.5s of no input")
         print("="*50)
         
         self.running = True
@@ -418,14 +432,13 @@ class KeyboardController:
         motor_thread = threading.Thread(target=self.motor_control_loop, daemon=True)
         motor_thread.start()
         
-        print("Press and hold W, A, S, or D keys. Press Q to quit.")
-        print("Current status: STOPPED")
+        print("Press W, A, S, or D keys. Press Q to quit.")
+        print("Status: STOPPED")
         
         try:
             while self.running:
                 char = self.get_char_non_blocking()
                 if char:
-                    char = char.lower()
                     self.last_key_time = time.time()  # Update last key time
                     
                     if char == 'q':
@@ -453,8 +466,8 @@ class KeyboardController:
             print("\nControl interrupted")
         finally:
             self.running = False
-            self._stop_raw()
-            print("Motors stopped")
+            stop_all_motors()
+            print("\nMotors stopped")
     
     def _print_status(self):
         """Print current movement status"""
