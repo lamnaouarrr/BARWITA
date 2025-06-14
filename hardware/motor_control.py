@@ -341,31 +341,38 @@ class KeyboardController:
 
     def _move_forward_raw(self):
         try:
+            # Both motors forward
             IN1.on(); IN2.off(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
                 ENA.value = self.speed; ENB.value = self.speed
             else:
                 ENA.on(); ENB.on()
         except: pass
+
     def _move_backward_raw(self):
         try:
+            # Both motors backward
             IN1.off(); IN2.on(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
                 ENA.value = self.speed; ENB.value = self.speed
             else:
                 ENA.on(); ENB.on()
         except: pass
-    def _turn_right_raw(self):
+
+    def _turn_left_raw(self):
         try:
-            IN1.on(); IN2.off(); IN3.off(); IN4.on()
+            # Left motor backward, right motor forward
+            IN1.off(); IN2.on(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
                 ENA.value = self.speed; ENB.value = self.speed
             else:
                 ENA.on(); ENB.on()
         except: pass
-    def _turn_left_raw(self):
+
+    def _turn_right_raw(self):
         try:
-            IN1.off(); IN2.on(); IN3.on(); IN4.off()
+            # Left motor forward, right motor backward
+            IN1.on(); IN2.off(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
                 ENA.value = self.speed; ENB.value = self.speed
             else:
