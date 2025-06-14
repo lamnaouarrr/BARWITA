@@ -322,8 +322,11 @@ class KeyboardController:
 
     def _move_forward_raw(self):
         try:
-            # Both motors forward (left and right motors forward)
-            IN1.on(); IN2.off(); IN3.on(); IN4.off()
+            # W: Both motors physically forward
+            # Motor A (Left - IN1, IN2) Forward: IN1.on(), IN2.off()
+            # Motor B (Right - IN3, IN4) Forward (assuming IN3/IN4 inverted): IN3.off(), IN4.on()
+            IN1.on(); IN2.off() 
+            IN3.off(); IN4.on()
             if PWM_AVAILABLE:
                 ENA.value = self.BASE_SPEED; ENB.value = self.BASE_SPEED
             else:
@@ -332,8 +335,11 @@ class KeyboardController:
 
     def _move_backward_raw(self):
         try:
-            # Both motors backward (left and right motors backward)
-            IN1.off(); IN2.on(); IN3.off(); IN4.on()
+            # S: Both motors physically backward
+            # Motor A (Left - IN1, IN2) Backward: IN1.off(), IN2.on()
+            # Motor B (Right - IN3, IN4) Backward (assuming IN3/IN4 inverted): IN3.on(), IN4.off()
+            IN1.off(); IN2.on()
+            IN3.on(); IN4.off()
             if PWM_AVAILABLE:
                 ENA.value = self.BASE_SPEED; ENB.value = self.BASE_SPEED
             else:
@@ -342,8 +348,11 @@ class KeyboardController:
 
     def _turn_left_raw(self):
         try:
-            # Left motor backward, right motor forward (tank turn left)
-            IN1.off(); IN2.on(); IN3.on(); IN4.off()
+            # A: Left motor backward, Right motor forward
+            # Motor A (Left - IN1, IN2) Backward: IN1.off(), IN2.on()
+            # Motor B (Right - IN3, IN4) Forward (assuming IN3/IN4 inverted): IN3.off(), IN4.on()
+            IN1.off(); IN2.on()
+            IN3.off(); IN4.on()
             if PWM_AVAILABLE:
                 ENA.value = self.TURN_SPEED; ENB.value = self.TURN_SPEED
             else:
@@ -352,8 +361,11 @@ class KeyboardController:
 
     def _turn_right_raw(self):
         try:
-            # Left motor forward, right motor backward (tank turn right)
-            IN1.on(); IN2.off(); IN3.off(); IN4.on()
+            # D: Left motor forward, Right motor backward
+            # Motor A (Left - IN1, IN2) Forward: IN1.on(), IN2.off()
+            # Motor B (Right - IN3, IN4) Backward (assuming IN3/IN4 inverted): IN3.on(), IN4.off()
+            IN1.on(); IN2.off()
+            IN3.on(); IN4.off()
             if PWM_AVAILABLE:
                 ENA.value = self.TURN_SPEED; ENB.value = self.TURN_SPEED
             else:
