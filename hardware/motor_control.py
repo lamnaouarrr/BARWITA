@@ -283,7 +283,7 @@ class KeyboardController:
     def __init__(self):
         self.running = False
         self.current_action = "stop"
-        self.speed = 0.7
+        self.speed = 0.45
         self.last_key_time = time.time()
         self.key_timeout = 0.25  # Stop if no key pressed for 0.5 seconds
 
@@ -306,7 +306,7 @@ class KeyboardController:
                 old_settings = termios.tcgetattr(fd)
                 try:
                     tty.setcbreak(fd)
-                    if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
+                    if select.select([sys.stdin], [], [], 0.025) == ([sys.stdin], [], []):
                         ch = sys.stdin.read(1)
                         return ch.lower() if ch else None
                 finally:
