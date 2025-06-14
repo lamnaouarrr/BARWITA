@@ -339,9 +339,9 @@ class KeyboardController:
                 self._stop_raw()
             time.sleep(0.05)
 
-    # --- SPEED SETTINGS (reduced for safer operation) ---
-    BASE_SPEED = 0.22  # Reduced base speed for forward/backward
-    TURN_SPEED = 0.13  # Reduced speed for turning (left/right)
+    # --- SPEED SETTINGS (further reduced for safer operation) ---
+    BASE_SPEED = 0.16  # Further reduced base speed for forward/backward
+    TURN_SPEED = 0.09  # Further reduced speed for turning (left/right)
     # You can adjust these values for your hardware
 
     def _move_forward_raw(self):
@@ -366,8 +366,8 @@ class KeyboardController:
 
     def _turn_left_raw(self):
         try:
-            # Left motor backward, right motor forward (tank turn left)
-            IN1.off(); IN2.on(); IN3.on(); IN4.off()
+            # Left motor forward, right motor backward (tank turn right)
+            IN1.on(); IN2.off(); IN3.off(); IN4.on()
             if PWM_AVAILABLE:
                 ENA.value = self.TURN_SPEED; ENB.value = self.TURN_SPEED
             else:
@@ -376,8 +376,8 @@ class KeyboardController:
 
     def _turn_right_raw(self):
         try:
-            # Left motor forward, right motor backward (tank turn right)
-            IN1.on(); IN2.off(); IN3.off(); IN4.on()
+            # Left motor backward, right motor forward (tank turn left)
+            IN1.off(); IN2.on(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
                 ENA.value = self.TURN_SPEED; ENB.value = self.TURN_SPEED
             else:
