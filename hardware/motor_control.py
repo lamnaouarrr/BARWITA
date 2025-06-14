@@ -290,20 +290,30 @@ class KeyboardController:
     def get_char_non_blocking(self):
         """Get a single character from stdin without waiting for enter"""
         try:
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            try:
-                tty.cbreak(fd)
-                # Very short timeout for responsive control
-                if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
-                    ch = sys.stdin.read(1)
-                    return ch
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        except:
-            # Fallback for non-Unix systems or when termios is not available
+            # Check if running on Windows (where termios won't work)
+            if sys.platform.startswith('win'):
+                import msvcrt
+                if msvcrt.kbhit():
+                    return msvcrt.getch().decode('utf-8').lower()
+                return None
+            else:
+                # Unix/Linux systems
+                fd = sys.stdin.fileno()
+                old_settings = termios.tcgetattr(fd)
+                try:
+                    tty.cbreak(fd)
+                    # Very short timeout for responsive control
+                    if select.select([sys.stdin], [], [], 0.05) == ([sys.stdin], [], []):
+                        ch = sys.stdin.read(1)
+                        return ch.lower() if ch else None
+                finally:
+                    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        except Exception as e:
+            # Fallback for when libraries are not available
+            print(f"Keyboard input error: {e}")
             return None
         return None
+
     def motor_control_loop(self):
         """Continuous motor control based on current action"""
         while self.running:
@@ -324,14 +334,6 @@ class KeyboardController:
                 self._turn_left_raw()
             elif self.current_action == "right":
                 self._turn_right_raw()
-            elif self.current_action == "forward_left":
-                self._move_forward_left_raw()
-            elif self.current_action == "forward_right":
-                self._move_forward_right_raw()
-            elif self.current_action == "backward_left":
-                self._move_backward_left_raw()
-            elif self.current_action == "backward_right":
-                self._move_backward_right_raw()
             else:
                 self._stop_raw()
             
@@ -377,52 +379,13 @@ class KeyboardController:
                 ENA.on(); ENB.on()
         except: pass
     
-    def _move_forward_right_raw(self):
-        """Forward with slight right turn"""
-        try:
-            IN1.on(); IN2.off(); IN3.on(); IN4.off()
-            if PWM_AVAILABLE:
-                ENA.value = self.speed; ENB.value = self.speed * 0.6  # Slow down right motor
-            else:
-                ENA.on(); ENB.on()
-        except: pass
-    
-    def _move_forward_left_raw(self):
-        """Forward with slight left turn"""
-        try:
-            IN1.on(); IN2.off(); IN3.on(); IN4.off()
-            if PWM_AVAILABLE:
-                ENA.value = self.speed * 0.6; ENB.value = self.speed  # Slow down left motor
-            else:
-                ENA.on(); ENB.on()
-        except: pass
-    
-    def _move_backward_right_raw(self):
-        """Backward with slight right turn"""
-        try:
-            IN1.off(); IN2.on(); IN3.off(); IN4.on()
-            if PWM_AVAILABLE:
-                ENA.value = self.speed; ENB.value = self.speed * 0.6
-            else:
-                ENA.on(); ENB.on()
-        except: pass
-    
-    def _move_backward_left_raw(self):
-        """Backward with slight left turn"""
-        try:
-            IN1.off(); IN2.on(); IN3.off(); IN4.on()
-            if PWM_AVAILABLE:
-                ENA.value = self.speed * 0.6; ENB.value = self.speed
-            else:
-                ENA.on(); ENB.on()
-        except: pass
-    
     def _stop_raw(self):
         """Raw stop without error checking"""
         try:
             IN1.off(); IN2.off(); IN3.off(); IN4.off()
             ENA.off(); ENB.off()
         except: pass
+
     def start_realtime_control(self):
         """Start real-time keyboard control"""
         if not PINS_INITIALIZED:
@@ -500,10 +463,6 @@ class KeyboardController:
             "backward": "BACKWARD", 
             "left": "TURN LEFT",
             "right": "TURN RIGHT",
-            "forward_left": "FORWARD LEFT",
-            "forward_right": "FORWARD RIGHT",
-            "backward_left": "BACKWARD LEFT",
-            "backward_right": "BACKWARD RIGHT",
             "stop": "STOPPED"
         }
         status = status_map.get(self.current_action, "UNKNOWN")
@@ -539,72 +498,8 @@ def manual_control_simple():
                 print("Invalid command. Use: w/s/a/d/x/q")
         except KeyboardInterrupt:
             break
-    
     stop_all_motors()
     print("Manual control ended")
-
-def realtime_control_alternative():
-    """Alternative real-time control using continuous input"""
-    if not PINS_INITIALIZED:
-        print("Error: GPIO pins not initialized")
-        return
-        
-    print("\n" + "="*50)
-    print("ALTERNATIVE REAL-TIME CONTROL")
-    print("="*50)
-    print("Controls:")
-    print("  W - Forward")
-    print("  S - Backward") 
-    print("  A - Turn Left")
-    print("  D - Turn Right")
-    print("  X - Stop")
-    print("  Q - Quit")
-    print()
-    print("INSTRUCTIONS:")
-    print("- Keep pressing the same key repeatedly to continue movement")
-    print("- Press X to stop motors")
-    print("- Press Q to quit")
-    print("="*50)
-    
-    try:
-        while True:
-            try:
-                # Use input with a short prompt
-                key = input("Command (W/A/S/D/X/Q): ").strip().lower()
-                
-                if key == 'q':
-                    print("Exiting control...")
-                    break
-                elif key == 'w':
-                    move_forward(0.7)
-                    print("Moving FORWARD - Keep pressing W to continue")
-                elif key == 's':
-                    move_backward(0.7)
-                    print("Moving BACKWARD - Keep pressing S to continue")
-                elif key == 'a':
-                    turn_left(0.7)
-                    print("Turning LEFT - Keep pressing A to continue")
-                elif key == 'd':
-                    turn_right(0.7)
-                    print("Turning RIGHT - Keep pressing D to continue")
-                elif key == 'x':
-                    stop_all_motors()
-                    print("STOPPED")
-                elif key == '':
-                    # Just pressing enter stops motors
-                    stop_all_motors()
-                    print("STOPPED")
-                else:
-                    print("Invalid command. Use W/A/S/D/X/Q")
-                    
-            except EOFError:
-                break
-                
-    except KeyboardInterrupt:
-        print("\nControl interrupted")
-    finally:
-        stop_all_motors()
-        print("Motors stopped")
 
 # Main execution for testing
 if __name__ == "__main__":
@@ -650,10 +545,9 @@ if __name__ == "__main__":
             print("4. Run full test sequence")
             print("5. Real-time keyboard control (experimental)")
             print("6. Simple manual control (press enter)")
-            print("7. Alternative real-time control (recommended)")
             print("0. Exit")
             
-            choice = input("Enter choice (0-7): ").strip()
+            choice = input("Enter choice (0-6): ").strip()
             
             if choice == "1":
                 test_motor_a()
@@ -668,8 +562,6 @@ if __name__ == "__main__":
                 controller.start_realtime_control()
             elif choice == "6":
                 manual_control_simple()
-            elif choice == "7":
-                realtime_control_alternative()
             elif choice == "0":
                 break
             else:
