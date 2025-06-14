@@ -315,33 +315,9 @@ class KeyboardController:
             return None
         return None
 
-    def motor_control_loop(self):
-        """Continuous motor control based on current action"""
-        while self.running:
-            if not PINS_INITIALIZED:
-                time.sleep(0.1)
-                continue
-            # Stop if no key pressed for timeout
-            if time.time() - self.last_key_time > self.key_timeout:
-                if self.current_action != "stop":
-                    self.current_action = "stop"
-                    self._print_status()
-            # Execute current action
-            if self.current_action == "forward":
-                self._move_forward_raw()
-            elif self.current_action == "backward":
-                self._move_backward_raw()
-            elif self.current_action == "left":
-                self._turn_left_raw()
-            elif self.current_action == "right":
-                self._turn_right_raw()
-            else:
-                self._stop_raw()
-            time.sleep(0.05)
-
-    # --- SPEED SETTINGS (further reduced for safer operation) ---
-    BASE_SPEED = 0.16  # Further reduced base speed for forward/backward
-    TURN_SPEED = 0.09  # Further reduced speed for turning (left/right)
+    # --- SPEED SETTINGS (even further reduced for safer operation) ---
+    BASE_SPEED = 0.12  # Even further reduced base speed for forward/backward
+    TURN_SPEED = 0.06  # Even further reduced speed for turning (left/right)
     # You can adjust these values for your hardware
 
     def _move_forward_raw(self):
@@ -366,16 +342,6 @@ class KeyboardController:
 
     def _turn_left_raw(self):
         try:
-            # Left motor forward, right motor backward (tank turn right)
-            IN1.on(); IN2.off(); IN3.off(); IN4.on()
-            if PWM_AVAILABLE:
-                ENA.value = self.TURN_SPEED; ENB.value = self.TURN_SPEED
-            else:
-                ENA.on(); ENB.on()
-        except: pass
-
-    def _turn_right_raw(self):
-        try:
             # Left motor backward, right motor forward (tank turn left)
             IN1.off(); IN2.on(); IN3.on(); IN4.off()
             if PWM_AVAILABLE:
@@ -384,11 +350,39 @@ class KeyboardController:
                 ENA.on(); ENB.on()
         except: pass
 
-    def _stop_raw(self):
+    def _turn_right_raw(self):
         try:
-            stop_all_motors()
-        except Exception:
-            pass
+            # Left motor forward, right motor backward (tank turn right)
+            IN1.on(); IN2.off(); IN3.off(); IN4.on()
+            if PWM_AVAILABLE:
+                ENA.value = self.TURN_SPEED; ENB.value = self.TURN_SPEED
+            else:
+                ENA.on(); ENB.on()
+        except: pass
+
+    def motor_control_loop(self):
+        """Continuous motor control based on current action"""
+        while self.running:
+            if not PINS_INITIALIZED:
+                time.sleep(0.1)
+                continue
+            # Stop if no key pressed for timeout
+            if time.time() - self.last_key_time > self.key_timeout:
+                if self.current_action != "stop":
+                    self.current_action = "stop"
+                    self._print_status()
+            # Execute current action
+            if self.current_action == "forward":
+                self._move_forward_raw()
+            elif self.current_action == "backward":
+                self._move_backward_raw()
+            elif self.current_action == "left":
+                self._turn_left_raw()
+            elif self.current_action == "right":
+                self._turn_right_raw()
+            else:
+                self._stop_raw()
+            time.sleep(0.05)
 
     def start_realtime_control(self):
         if not PINS_INITIALIZED:
