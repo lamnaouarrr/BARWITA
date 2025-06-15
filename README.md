@@ -107,15 +107,17 @@ BARWITA/
   - Set up Ethernet/Wi-Fi connectivity (hostname: barwita, IP: 192.168.1.223, country: CN)
   - Initialized Git repository in ~/BARWITA
 
-### 🔄 Week 3: Flask + gpiozero Setup (IN PROGRESS)
-- **Current Tasks:**
-  - Creating BARWITA project folder structure
-  - Setting up GitHub repository integration
-  - Installing Flask and Flask-SocketIO framework
-  - Installing and configuring gpiozero library
-  - Configuring GPIO pins for motor control using gpiozero
-  - Configuring GPIO pins for servo control using gpiozero
-  - Setting up basic Flask web interface with Socket.IO
+### ✅ Week 3: Flask + gpiozero Setup (COMPLETED)
+
+* **Completed Tasks:**
+  * Created structured `BARWITA` project folder
+  * Set up GitHub repository and integrated Git version control
+  * Installed Flask and Flask-SocketIO framework for web control
+  * Installed and configured `gpiozero` library for simplified GPIO access
+  * Configured Raspberry Pi GPIO pins for motor driver using `gpiozero`
+  * Wrote and tested motor control script (`motor_control.py`) for directional movement (forward, backward, left, right)
+  * Verified motor movement using test scripts on Raspberry Pi
+  * Confirmed pin mappings and power delivery for stable movement
 
 ### 📋 Week 4: Integrate Camera Streaming (PLANNED)
 - Install and configure mjpg-streamer
@@ -161,11 +163,13 @@ BARWITA/
 
 ## Current Status
 
-**Hardware Assembly:** Core components (Raspberry Pi, motors, camera, servo) are assembled and functional. Waveshare Air780E 4G module, TFT LCD screen, LEDs, and switch are not yet integrated into the system.
+### ✅ Hardware Assembly:
 
-**Software Development:** Raspberry Pi OS is configured. Currently transitioning from WebIOPi to a modern Flask + gpiozero + Socket.IO architecture for improved performance and maintainability.
+> Core components (Raspberry Pi, DC motors, camera, servo motors) are assembled and tested. Motor control verified using gpiozero. Waveshare Air780E 4G module, TFT LCD screen, LEDs, and switch are pending integration.
 
-**Network Configuration:** Local network connectivity established. Internet connectivity via 4G module planned for Week 6.
+### ✅ Software Development:
+
+> Transitioned from WebIOPi to a clean Flask + gpiozero + Socket.IO architecture. GPIO configuration for motors completed. Ready to proceed to camera integration.
 
 ## Technology Stack
 
